@@ -57,17 +57,17 @@ const App = () => {
 
     // get fact from server
     async function getFact() {
+
+        // validate data
         const response = await axios('https://catfact.ninja/fact')
         let data = response.data.fact;
         setFact(data)
     }
 
 
-    function checkCached() {
-        const name = ageInputRef.current.value
+    function checkCached(name) {
         let data = localStorage.getItem(name)
         if (data) {
-
             // fill fields
             setAge(data)
             setValidAge(true)
@@ -81,8 +81,8 @@ const App = () => {
         return false
     }
 
-    function validate() {
-        //validation
+    function validate(name) {
+
         const regex = new RegExp(/^[a-zA-Z]+$/);
         if (!regex.test(name) || name.length > 15) {
             setValidAge(false)
@@ -92,7 +92,7 @@ const App = () => {
     }
 
 
-    function getAgeFromNameAndCache() {
+    function getAgeFromNameAndCache(name, controller) {
         const signal = controller.signal
         axios.get(`https://api.agify.io/?name=${name}`, {signal}).then((response) => {
             if (response.status !== 200 || !response.data || !response.data.age)
@@ -104,6 +104,7 @@ const App = () => {
             localStorage.setItem(name, age)
         }).catch((e) => {
             console.log(e.message)
+            console.log(e)
         }).finally(() => {
             ageInputRef.current.value = ''
             setIsSubmitting(false)
@@ -112,23 +113,32 @@ const App = () => {
     }
     function getAge() {
         controller.abort()
-        setController(new AbortController())
+        const abortController =new AbortController()
+        setController(abortController)
+        const name = ageInputRef.current.value
+        ageInputRef.current.value = ''
         setIsSubmitting(true)
-        if (checkCached())
+        if (checkCached(name))
             return
         setAge('')
-        if (!validate())
+        if (!validate(name))
             return
-        getAgeFromNameAndCache()
+        getAgeFromNameAndCache(name, abortController)
     }
 
 
     function returnAge(age) {
         if (age)
-            return 'AGE : ' + age
+            return `AGE : ${age}`
         else if (validAge)
             return ''
         return 'Имя может содержать только буквы. Его длина должна быть от 1 до 15 символов'
+    }
+
+    function returnNamePlaceholder() {
+        if (isSubmitting)
+            return 'Загружаем ваш возраст...'
+        return 'Введите имя';
     }
 
     return (
@@ -157,7 +167,6 @@ const App = () => {
                 <Group>
                     <form onSubmit={(event) => {
                         event.preventDefault()
-                        // controller.abort()
                         getAge()
                     }}>
                         <FormItem
@@ -168,7 +177,7 @@ const App = () => {
                             <Input
                                 type={"text"}
                                 getRef={ageInputRef}
-                                placeholder={'Введите имя'}
+                                placeholder={returnNamePlaceholder()}
                                 defaultValue={''}
                                 onChange={onChangeHandler}
                             />
@@ -187,5 +196,3 @@ const App = () => {
 
 
 export default App;
-
-//asdasdasdasdasd
