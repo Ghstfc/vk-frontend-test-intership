@@ -3,12 +3,11 @@ import {
     AppRoot,
     Panel,
     PanelHeader,
-    Group,
-    FormItem, Input, Button,
 } from '@vkontakte/vkui';
 import '@vkontakte/vkui/dist/vkui.css';
 import {useEffect, useRef, useState} from "react";
-import axios from "axios";
+import axios, {CanceledError} from "axios";
+import Task from "./components/Task";
 
 const App = () => {
 
@@ -26,6 +25,7 @@ const App = () => {
 
     // validation on name
     const [validAge, setValidAge] = useState(true)
+    const [error, setError] = useState('')
 
     // axios controller
     const [controller, setController] = useState(new AbortController())
@@ -45,12 +45,15 @@ const App = () => {
         let ID
         if (!isSubmitting)
             ID = setTimeout(() => getAge(), 3000)
-
         return () => clearTimeout(ID)
-    }, [name, isSubmitting]);
+    }, [name, isSubmitting, getAge]);
 
 
     function onChangeHandler() {
+        if (!validAge)
+            setValidAge(true)
+        if (error)
+            setError('')
         setName(ageInputRef.current.value)
         setIsSubmitting(false)
     }
@@ -86,6 +89,7 @@ const App = () => {
         const regex = new RegExp(/^[a-zA-Z]+$/);
         if (!regex.test(name) || name.length > 15) {
             setValidAge(false)
+            setIsSubmitting(false)
             return false
         }
         return true
@@ -94,6 +98,8 @@ const App = () => {
 
     function getAgeFromNameAndCache(name, controller) {
         const signal = controller.signal
+
+
         axios.get(`https://api.agify.io/?name=${name}`, {signal}).then((response) => {
             if (response.status !== 200 || !response.data || !response.data.age)
                 throw new Error("Server get bad response")
@@ -102,18 +108,23 @@ const App = () => {
             setValidAge(true)
             ageInputRef.current.value = ''
             localStorage.setItem(name, age)
+            setIsSubmitting(false)
         }).catch((e) => {
-            console.log(e.message)
-            console.log(e)
+            if (!(e instanceof CanceledError)) {
+                setError(e.message)
+                setValidAge(false)
+                setIsSubmitting(false)
+            }
         }).finally(() => {
             ageInputRef.current.value = ''
-            setIsSubmitting(false)
             setName('')
         })
     }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     function getAge() {
         controller.abort()
-        const abortController =new AbortController()
+        const abortController = new AbortController()
         setController(abortController)
         const name = ageInputRef.current.value
         ageInputRef.current.value = ''
@@ -128,11 +139,14 @@ const App = () => {
 
 
     function returnAge(age) {
+        // spdfkpsk
+        if (error)
+            return `Error: ${error}`
         if (age)
             return `AGE : ${age}`
         else if (validAge)
             return ''
-        return 'Имя может содержать только буквы. Его длина должна быть от 1 до 15 символов'
+        return 'Имя может содержать только буквы'
     }
 
     function returnNamePlaceholder() {
@@ -145,50 +159,72 @@ const App = () => {
         <AppRoot>
             <Panel id="main">
                 <PanelHeader>VK INTERSHIP TEST</PanelHeader>
-                <Group>
-                    <form onSubmit={(event) => {
-                        event.preventDefault()
-                        getFact()
-                    }}>
-                        <FormItem>
-                            <Input
-                                type={"text"}
-                                getRef={factsInputRef}
-                                defaultValue={fact}
-                            />
-                        </FormItem>
-                        <FormItem>
-                            <Button type='submit' size='l' stretched>
-                                SUBMIT
-                            </Button>
-                        </FormItem>
-                    </form>
-                </Group>
-                <Group>
-                    <form onSubmit={(event) => {
-                        event.preventDefault()
-                        getAge()
-                    }}>
-                        <FormItem
-                            // поменять код
-                            bottom={returnAge(age)}
-                            status={validAge ? 'valid' : 'error'}
-                        >
-                            <Input
-                                type={"text"}
-                                getRef={ageInputRef}
-                                placeholder={returnNamePlaceholder()}
-                                defaultValue={''}
-                                onChange={onChangeHandler}
-                            />
-                        </FormItem>
-                        <FormItem>
-                            <Button type='submit' size='l' stretched>
-                                SUBMIT
-                            </Button>
-                        </FormItem>
-                    </form>
-                </Group>
+
+                <Task
+                    title={'FIRST TASK'}
+                    onSubmit={getFact}
+                    ref={factsInputRef}
+                    defaultVal={fact}
+                    placeholder={'Не вводите ничего, просто нажмите на кнопку'}
+                />
+                <Task
+                    title={'SECOND TASK'}
+                    onSubmit={getAge}
+                    ref={ageInputRef}
+                    defaultVal={''}
+                    placeholder={returnNamePlaceholder()}
+                    onChange={onChangeHandler}
+                    status={validAge ? 'valid' : 'error'}
+                    bottom={returnAge(age)}
+                />
+                {/*<Group>*/}
+                {/*    <Header>FIRST TASK</Header>*/}
+                {/*    <form onSubmit={(event) => {*/}
+                {/*        event.preventDefault()*/}
+                {/*        getFact()*/}
+                {/*    }}>*/}
+                {/*        <FormItem>*/}
+                {/*            <Input*/}
+                {/*                type={"text"}*/}
+                {/*                getRef={factsInputRef}*/}
+                {/*                defaultValue={fact}*/}
+                {/*                placeholder={'Не вводите ничего, просто нажмите на кнопку'}*/}
+                {/*            />*/}
+                {/*        </FormItem>*/}
+                {/*        <FormItem>*/}
+                {/*            <Button type='submit' size='l' stretched>*/}
+                {/*                SUBMIT*/}
+                {/*            </Button>*/}
+                {/*        </FormItem>*/}
+                {/*    </form>*/}
+                {/*</Group>*/}
+
+                {/*<Group>*/}
+                {/*    <Header>SECOND TASK</Header>*/}
+                {/*    <form onSubmit={(event) => {*/}
+                {/*        event.preventDefault()*/}
+                {/*        getAge()*/}
+                {/*    }}>*/}
+                {/*        <FormItem*/}
+                {/*            // поменять код*/}
+                {/*            bottom={returnAge(age)}*/}
+                {/*            status={validAge ? 'valid' : 'error'}*/}
+                {/*        >*/}
+                {/*            <Input*/}
+                {/*                type={"text"}*/}
+                {/*                getRef={ageInputRef}*/}
+                {/*                defaultValue={''}*/}
+                {/*                placeholder={returnNamePlaceholder()}*/}
+                {/*                onChange={onChangeHandler}*/}
+                {/*            />*/}
+                {/*        </FormItem>*/}
+                {/*        <FormItem>*/}
+                {/*            <Button type='submit' size='l' stretched>*/}
+                {/*                SUBMIT*/}
+                {/*            </Button>*/}
+                {/*        </FormItem>*/}
+                {/*    </form>*/}
+                {/*</Group>*/}
             </Panel>
         </AppRoot>
     );
