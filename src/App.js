@@ -6,10 +6,16 @@ import {
 } from '@vkontakte/vkui';
 import '@vkontakte/vkui/dist/vkui.css';
 import {useEffect, useRef, useState} from "react";
-import axios, {CanceledError} from "axios";
 import Task from "./components/Task";
+import {useAxios} from "./hooks/useAxios";
+import {checkCached, validate} from "./utils/Validation";
 
 const App = () => {
+
+
+    const axiosFacts = useAxios('https://catfact.ninja/fact')
+    const axiosAge = useAxios('https://api.agify.io/')
+
 
     // refs to inputs
     const factsInputRef = useRef()
@@ -25,7 +31,7 @@ const App = () => {
 
     // validation on name
     const [validAge, setValidAge] = useState(true)
-    const [error, setError] = useState('')
+    const [errorName, setErrorName] = useState('')
 
     // axios controller
     const [controller, setController] = useState(new AbortController())
@@ -33,12 +39,14 @@ const App = () => {
 
     // change cursor position
     useEffect(() => {
+        factsInputRef.current.value = fact
         const pos = fact.search(/[^A-Za-z]/)
         factsInputRef.current.setSelectionRange(pos, pos)
         factsInputRef.current.focus()
     }, [fact]);
 
 
+    // control input and auto submit after 3 seconds
     useEffect(() => {
         if (name === '')
             return
@@ -49,75 +57,50 @@ const App = () => {
     }, [name, isSubmitting, getAge]);
 
 
+    // change name field
     function onChangeHandler() {
         if (!validAge)
             setValidAge(true)
-        if (error)
-            setError('')
+        if (errorName)
+            setErrorName('')
         setName(ageInputRef.current.value)
         setIsSubmitting(false)
     }
 
-    // get fact from server
-    async function getFact() {
-
-        // validate data
-        const response = await axios('https://catfact.ninja/fact')
-        let data = response.data.fact;
-        setFact(data)
+    function getFact() {
+        axiosFacts({}).then((data) => {
+            console.log(data)
+            const fact = data.fact;
+            if (!fact)
+                throw new Error('No such fact')
+            setFact(fact)
+        }).catch((e) => {
+            setErrorName(e)
+        })
     }
-
-
-    function checkCached(name) {
-        let data = localStorage.getItem(name)
-        if (data) {
-            // fill fields
-            setAge(data)
-            setValidAge(true)
-
-            // to default values of controllers
-            ageInputRef.current.value = ''
-            setIsSubmitting(false)
-            setName('')
-            return true
-        }
-        return false
-    }
-
-    function validate(name) {
-
-        const regex = new RegExp(/^[a-zA-Z]+$/);
-        if (!regex.test(name) || name.length > 15) {
-            setValidAge(false)
-            setIsSubmitting(false)
-            return false
-        }
-        return true
-    }
-
 
     function getAgeFromNameAndCache(name, controller) {
         const signal = controller.signal
-
-
-        axios.get(`https://api.agify.io/?name=${name}`, {signal}).then((response) => {
-            if (response.status !== 200 || !response.data || !response.data.age)
-                throw new Error("Server get bad response")
-            const age = response.data.age;
+        const request = {
+            params: {name: name},
+            signal: signal
+        }
+        axiosAge(request).then((data) => {
+            if (data === '') // CancelError ignoring
+                return
+            const age = data.age;
+            console.log(age)
+            if (!age)
+                throw new Error('No age')
             setAge(age)
-            setValidAge(true)
-            ageInputRef.current.value = ''
-            localStorage.setItem(name, age)
-            setIsSubmitting(false)
-        }).catch((e) => {
-            if (!(e instanceof CanceledError)) {
-                setError(e.message)
-                setValidAge(false)
-                setIsSubmitting(false)
-            }
-        }).finally(() => {
-            ageInputRef.current.value = ''
             setName('')
+            localStorage.setItem(name, age)
+            setValidAge(true)
+        }).catch((e) => {
+            setErrorName(e.message)
+            setValidAge(false)
+        }).finally(() => {
+            setIsSubmitting(false)
         })
     }
 
@@ -129,19 +112,31 @@ const App = () => {
         const name = ageInputRef.current.value
         ageInputRef.current.value = ''
         setIsSubmitting(true)
-        if (checkCached(name))
+
+        if (checkCached(name)) {
+            setAge(localStorage.getItem(name))
+            toDefault()
             return
+        }
         setAge('')
-        if (!validate(name))
+        if (!validate(name)) {
+            setValidAge(false)
+            setIsSubmitting(false)
             return
+        }
         getAgeFromNameAndCache(name, abortController)
     }
 
+    function toDefault() {
+        setValidAge(true)
+        ageInputRef.current.value = ''
+        setIsSubmitting(false)
+        setName('')
+    }
 
     function returnAge(age) {
-        // spdfkpsk
-        if (error)
-            return `Error: ${error}`
+        if (errorName)
+            return `Error: ${errorName}`
         if (age)
             return `AGE : ${age}`
         else if (validAge)
@@ -159,7 +154,6 @@ const App = () => {
         <AppRoot>
             <Panel id="main">
                 <PanelHeader>VK INTERSHIP TEST</PanelHeader>
-
                 <Task
                     title={'FIRST TASK'}
                     onSubmit={getFact}
@@ -177,54 +171,6 @@ const App = () => {
                     status={validAge ? 'valid' : 'error'}
                     bottom={returnAge(age)}
                 />
-                {/*<Group>*/}
-                {/*    <Header>FIRST TASK</Header>*/}
-                {/*    <form onSubmit={(event) => {*/}
-                {/*        event.preventDefault()*/}
-                {/*        getFact()*/}
-                {/*    }}>*/}
-                {/*        <FormItem>*/}
-                {/*            <Input*/}
-                {/*                type={"text"}*/}
-                {/*                getRef={factsInputRef}*/}
-                {/*                defaultValue={fact}*/}
-                {/*                placeholder={'Не вводите ничего, просто нажмите на кнопку'}*/}
-                {/*            />*/}
-                {/*        </FormItem>*/}
-                {/*        <FormItem>*/}
-                {/*            <Button type='submit' size='l' stretched>*/}
-                {/*                SUBMIT*/}
-                {/*            </Button>*/}
-                {/*        </FormItem>*/}
-                {/*    </form>*/}
-                {/*</Group>*/}
-
-                {/*<Group>*/}
-                {/*    <Header>SECOND TASK</Header>*/}
-                {/*    <form onSubmit={(event) => {*/}
-                {/*        event.preventDefault()*/}
-                {/*        getAge()*/}
-                {/*    }}>*/}
-                {/*        <FormItem*/}
-                {/*            // поменять код*/}
-                {/*            bottom={returnAge(age)}*/}
-                {/*            status={validAge ? 'valid' : 'error'}*/}
-                {/*        >*/}
-                {/*            <Input*/}
-                {/*                type={"text"}*/}
-                {/*                getRef={ageInputRef}*/}
-                {/*                defaultValue={''}*/}
-                {/*                placeholder={returnNamePlaceholder()}*/}
-                {/*                onChange={onChangeHandler}*/}
-                {/*            />*/}
-                {/*        </FormItem>*/}
-                {/*        <FormItem>*/}
-                {/*            <Button type='submit' size='l' stretched>*/}
-                {/*                SUBMIT*/}
-                {/*            </Button>*/}
-                {/*        </FormItem>*/}
-                {/*    </form>*/}
-                {/*</Group>*/}
             </Panel>
         </AppRoot>
     );

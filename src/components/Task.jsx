@@ -8,7 +8,7 @@ const Task = React.forwardRef(({
                                    placeholder,
                                    onChange,
                                    bottom,
-                                   status
+                                   status,
                                }, ref) => {
     return (
         <Group>
