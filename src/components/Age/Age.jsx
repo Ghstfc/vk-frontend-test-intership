@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {useAxios} from "../../hooks/useAxios";
-import {Button, FormItem, Group, Header, Input} from "@vkontakte/vkui";
-import {checkCached, validate} from "../../utils/Validation";
+import {useAxios} from "../../utils/useAxios";
+import {Button, FormItem, Group, Header, Input, ScreenSpinner} from "@vkontakte/vkui";
+import {checkCached, returnAge, validate} from "./lib/lib";
 
 const Age = () => {
 
@@ -21,6 +21,7 @@ const Age = () => {
     // axios controller
     const [controller, setController] = useState(new AbortController())
 
+    // submit after 3 seconds
     useEffect(() => {
         if (name === '')
             return
@@ -49,13 +50,14 @@ const Age = () => {
             if (data === '') // CancelError ignoring
                 return
             const age = data.age;
-            console.log(age)
             if (!age)
                 throw new Error('No age')
+
+            localStorage.setItem(name, age)
             setAge(age)
             setName('')
-            localStorage.setItem(name, age)
             setValidAge(true)
+
         }).catch((e) => {
             setError(e.message)
             setValidAge(false)
@@ -94,22 +96,6 @@ const Age = () => {
         setName('')
     }
 
-    function returnAge(age) {
-        if (error)
-            return `Error: ${error}`
-        if (age)
-            return `AGE : ${age}`
-        else if (validAge)
-            return ''
-        return 'Имя может содержать только буквы'
-    }
-
-    function returnNamePlaceholder() {
-        if (isSubmitting)
-            return 'Загружаем ваш возраст...'
-        return 'Введите имя';
-    }
-
 
     return (
         <Group>
@@ -120,13 +106,13 @@ const Age = () => {
             }}>
                 <FormItem
                     status={validAge ? 'valid' : 'error'}
-                    bottom={returnAge(age)}
+                    bottom={returnAge(age, error, validAge)}
                 >
                     <Input
                         type={"text"}
                         getRef={ref}
                         defaultValue={''}
-                        placeholder={returnNamePlaceholder()}
+                        placeholder={'Введите имя'}
                         onChange={onChangeHandler}
                     />
                 </FormItem>
@@ -135,6 +121,11 @@ const Age = () => {
                         SUBMIT
                     </Button>
                 </FormItem>
+                {
+                    isSubmitting
+                        ? <ScreenSpinner/>
+                        : ''
+                }
             </form>
         </Group>
     );

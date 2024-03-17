@@ -1,15 +1,9 @@
-import {createRoot} from "react-dom/client";
-import {AdaptivityProvider, ConfigProvider} from "@vkontakte/vkui";
-import * as React from "react";
+import React from "react";
+import ReactDOM from "react-dom";
+// import bridge from "@vkontakte/vk-bridge";
 import App from "./App";
 
-const container = document.getElementById('root');
-const root = createRoot(container); // createRoot(container!) if you use TypeScript
-root.render(
-    <ConfigProvider appearance={"light"}>
-        <AdaptivityProvider>
-            <App />
-        </AdaptivityProvider>
-    </ConfigProvider>,
-);
+// Init VK Mini App
+// bridge.send("VKWebAppInit");
 
+ReactDOM.render(<App />, document.getElementById("root"));

@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {useAxios} from "../../hooks/useAxios";
+import {useAxios} from "../../utils/useAxios";
 import {Button, FormItem, Group, Header, Input} from "@vkontakte/vkui";
 
 const Fact = () => {
@@ -20,15 +20,21 @@ const Fact = () => {
     }, [fact]);
 
     function getFact() {
+        setError('')
         axiosFacts({}).then((data) => {
-            console.log(data)
             const fact = data.fact;
             if (!fact)
                 throw new Error('No such fact')
             setFact(fact)
         }).catch((e) => {
-            setError(e)
+            setError(e.message)
         })
+    }
+
+    function getError() {
+        if (error)
+            return 'error'
+        return 'valid'
     }
 
     return (
@@ -38,7 +44,10 @@ const Fact = () => {
                 event.preventDefault()
                 getFact()
             }}>
-                <FormItem>
+                <FormItem
+                    status={getError()}
+                    bottom={error}
+                >
                     <Input
                         type={"text"}
                         getRef={ref}
