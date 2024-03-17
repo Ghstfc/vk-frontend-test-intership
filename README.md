@@ -28,9 +28,7 @@
 ```json
 {
   "static_path": "build",
-  "app_id": <Ваш
-  id
-  приложения>,
+  "app_id": "<Ваш id приложения>",
   "endpoints": {
     "mobile": "index.html",
     "mvk": "index.html",
